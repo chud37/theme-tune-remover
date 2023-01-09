@@ -34,8 +34,6 @@ def findOffset(within_file, find_file, window):
 
     fig, ax = plt.subplots()
     ax.plot(c)
-#     fig.savefig("cross-correlation.png")
-
     return offset
 
 
@@ -45,7 +43,7 @@ def getFileList(walk_directory):
         for filename in files:
             if ('.mp4' in str(filename) or '.avi' in str(filename) or '.mkv' in str(filename) or '.mov' in str(filename)):
                 file_path = os.path.join(root, filename)
-                foundFiles.append(file_path)
+                foundFiles.append(Path(file_path))
     return foundFiles
 
 def convertToAudioFiles(files, directory):
@@ -53,20 +51,19 @@ def convertToAudioFiles(files, directory):
 
     themeFileDuration = librosa.get_duration(filename=themeFile)
 
-    outputDirectory = directory + '/output'
+    outputDirectory = Path(os.path.join(directory,'output'))
     createDirectory(outputDirectory)
 
     for index, file in enumerate(files):
 
-        print('\n\n ', os.path.splitext(Path(file).stem)[0])
+        print('\n\n------------------\n', os.path.splitext(Path(file).stem)[0], '\n------------------')
 
 #         audioFileName = os.path.splitext(file.replace(directory, outputDirectory))[0]+".wav"
-        audioFileName = os.path.join(outputDirectory, os.path.splitext(Path(file).stem)[0]+'.wav')
-        cutoutAudioFileName = os.path.join(outputDirectory, os.path.splitext(Path(file).stem)[0]+'_cutout.wav')
+        audioFileName = str(Path(os.path.join(outputDirectory, os.path.splitext(Path(file).stem)[0]+'.wav')))
+        cutoutAudioFileName = str(Path(os.path.join(outputDirectory, os.path.splitext(Path(file).stem)[0]+'_cutout.wav')))
 
-        print(audioFileName)
-        audioclip = AudioFileClip(file)
-#         audioclip.write_audiofile(audioFileName)
+        audioclip = AudioFileClip(str(file))
+        audioclip.write_audiofile(audioFileName)
         offset = findOffset(audioFileName, themeFile, 90)
 
         offsetTime = time.strftime("%H:%M:%S", time.gmtime(offset))
@@ -83,7 +80,7 @@ def convertToAudioFiles(files, directory):
 def createDirectory(directory):
     if not os.path.exists(directory):
         try:
-            os.mkdir(directory.replace('\\','/'))
+            os.mkdir(directory)
             return True
         except:
             raise SystemExit("[ Unable to create directory: ",directory," program fail. ]")
@@ -94,19 +91,19 @@ def main():
 
     print ('\n\n----------------------------------------------------------------')
     print ('Theme Tune Remover')
-    print ('Supply a directory and place a file with theme tune to cutout in the root of that directory.  Name it theme.wav')
-    print ('')
+    print ('Supply a directory and place a file with theme tune to cutout in the root of that directory.  Name it theme.wav\n')
     print ('You may need to update your moviepy file as per this pull request: https://github.com/Zulko/moviepy/pull/1757/files')
-    print ('Update the readers.py file and this will prevent any Index out of bounds errors.')
-    print ('')
+    print ('Update the readers.py file and this will prevent any Index out of bounds errors.\n')
     print ('Preparing to cut the theme tune out of all video files and save as audio files...')
     print ('----------------------------------------------------------------\n\n')
 
-    directory = '/Users/chud37/Desktop/Friends'
-    themeFile = os.path.join(directory, 'theme.wav')
+    # directory = '/Users/chud37/Desktop/Friends'
+    directory = 'M:/tv/Friends/Season 1'
+    themeFile = Path(os.path.join(directory, 'theme.wav'))
 
     if not os.path.exists(themeFile):
-        raise SystemExit('Unable to find theme file.  Please create wav file named theme.wav in the target directory.')
+        print('Theme file not found in ', themeFile)
+        raise SystemExit('Unable to find theme file..  Please create wav file named theme.wav in the target directory.')
 
     files = getFileList(directory)
     convertToAudioFiles(files, directory)
