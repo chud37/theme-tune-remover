@@ -12,6 +12,7 @@ import os
 import sys
 
 from pathlib import Path
+import gc
 
 # Theme Tune Remover
 # -----------------------------------------------
@@ -34,6 +35,10 @@ def findOffset(within_file, find_file, window):
 
     fig, ax = plt.subplots()
     ax.plot(c)
+    
+    del y_within, sr_within, y_find, ax, fig, peak, c
+    gc.collect()
+    
     return offset
 
 
@@ -74,7 +79,15 @@ def convertToAudioFiles(files, directory):
 
         cutout = audioclip.cutout(offsetTime, offsetTimeAndTheme)
         cutout.write_audiofile(audioFileName)
+        audioclip.close()
+        cutout.close()
+        
+        del audioclip
+        del cutout
+        
+        gc.collect()
 
+        
 
 
 def createDirectory(directory):
@@ -98,7 +111,7 @@ def main():
     print ('----------------------------------------------------------------\n\n')
 
     # directory = '/Users/chud37/Desktop/Friends'
-    directory = 'M:/tv/Friends/Season 1'
+    directory = 'M:/tv/Friends/process'
     themeFile = Path(os.path.join(directory, 'theme.wav'))
 
     if not os.path.exists(themeFile):
