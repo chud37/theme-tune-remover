@@ -9,10 +9,15 @@ import matplotlib.pyplot as plt
 # import moviepy.editor as mp
 from moviepy.editor import AudioFileClip, CompositeAudioClip
 import os
+from os import path
 import sys
 
 from pathlib import Path
-import gc
+
+
+from multiprocessing import Process, Manager
+from dotenv import dotenv_values
+
 
 # Theme Tune Remover
 # -----------------------------------------------
@@ -36,9 +41,6 @@ def findOffset(within_file, find_file, window):
     fig, ax = plt.subplots()
     ax.plot(c)
     
-    del y_within, sr_within, y_find, ax, fig, peak, c
-    gc.collect()
-    
     return offset
 
 
@@ -51,56 +53,62 @@ def getFileList(walk_directory):
                 foundFiles.append(Path(file_path))
     return foundFiles
 
-def convertToAudioFiles(files, directory):
-    global themeFile
+def removeThemeTune(file, outputDirectory, themeFile, themeFileDuration):
 
-    themeFileDuration = librosa.get_duration(filename=themeFile)
+    print('\n\n------------------\n', os.path.splitext(Path(file).stem)[0], '\n------------------')
+    audioFileName = str(Path(os.path.join(outputDirectory, os.path.splitext(Path(file).stem)[0]+'.wav')))
+    cutoutAudioFileName = str(Path(os.path.join(outputDirectory, os.path.splitext(Path(file).stem)[0]+'_cutout.wav')))
 
-    outputDirectory = Path(os.path.join(directory,'output'))
-    createDirectory(outputDirectory)
+    audioclip = AudioFileClip(str(file))
+    audioclip.write_audiofile(audioFileName)
+    offset = findOffset(audioFileName, themeFile, 90)
 
-    for index, file in enumerate(files):
+    offsetTime = time.strftime("%H:%M:%S", time.gmtime(offset))
+    offsetTimeAndTheme = time.strftime("%H:%M:%S", time.gmtime(offset + themeFileDuration))
 
-        print('\n\n------------------\n', os.path.splitext(Path(file).stem)[0], '\n------------------')
+    print('\nFound offset:', offset, '- Writing audio file again...')
+    print('Cutting audio from', str(offsetTime), 'to', str(offsetTimeAndTheme))
 
-#         audioFileName = os.path.splitext(file.replace(directory, outputDirectory))[0]+".wav"
-        audioFileName = str(Path(os.path.join(outputDirectory, os.path.splitext(Path(file).stem)[0]+'.wav')))
-        cutoutAudioFileName = str(Path(os.path.join(outputDirectory, os.path.splitext(Path(file).stem)[0]+'_cutout.wav')))
-
-        audioclip = AudioFileClip(str(file))
-        audioclip.write_audiofile(audioFileName)
-        offset = findOffset(audioFileName, themeFile, 90)
-
-        offsetTime = time.strftime("%H:%M:%S", time.gmtime(offset))
-        offsetTimeAndTheme = time.strftime("%H:%M:%S", time.gmtime(offset + themeFileDuration))
-
-        print('\nFound offset:', offset, '- Writing audio file again...')
-        print('Cutting audio from', str(offsetTime), 'to', str(offsetTimeAndTheme))
-
-        cutout = audioclip.cutout(offsetTime, offsetTimeAndTheme)
-        cutout.write_audiofile(audioFileName)
-        audioclip.close()
-        cutout.close()
-        
-        del audioclip
-        del cutout
-        
-        gc.collect()
-
-        
-
+    cutout = audioclip.cutout(offsetTime, offsetTimeAndTheme)
+    cutout.write_audiofile(audioFileName)
+    audioclip.close()
+    cutout.close()
 
 def createDirectory(directory):
     if not os.path.exists(directory):
         try:
             os.mkdir(directory)
+            print ('Successfully created outputDirectory: ', directory)
             return True
         except:
             raise SystemExit("[ Unable to create directory: ",directory," program fail. ]")
             return False
 
+def pathExists(directory):
+        if not path.exists(os.path.abspath(directory)):
+            return False
+        return True
+def getEnvironmentVar(var, environmentItems) -> str:
+        for key, value in environmentItems.items():
+            if key == var:
+                return value
+        return ''
+
+def loadEnvironmentalData():
+    thisFilePath = os.path.dirname(os.path.realpath(__file__))
+    environmentFileLocal = os.path.join(thisFilePath,'.env.local')
+    environmentFileDist = os.path.join(thisFilePath,'.env.dist')
+    if pathExists(environmentFileLocal):
+        return dotenv_values(environmentFileLocal)
+    else:
+        source = Path(environmentFileDist)
+        destination = Path(environmentFileLocal)
+        destination.write_bytes(source.read_bytes())
+        return dotenv_values(environmentFileLocal)
+    
+    
+
 def main():
-    global themeFile
 
     print ('\n\n----------------------------------------------------------------')
     print ('Theme Tune Remover')
@@ -110,16 +118,33 @@ def main():
     print ('Preparing to cut the theme tune out of all video files and save as audio files...')
     print ('----------------------------------------------------------------\n\n')
 
-    # directory = '/Users/chud37/Desktop/Friends'
-    directory = 'M:/tv/Friends/process'
-    themeFile = Path(os.path.join(directory, 'theme.wav'))
+    # Get environment data, namely the video path that we'll scan for video files in.
+    environmentData = loadEnvironmentalData()
+    videoDirectory = getEnvironmentVar('VIDEO_PATH', environmentData)
+    themeFile = Path(os.path.join(videoDirectory, 'theme.wav'))
 
     if not os.path.exists(themeFile):
         print('Theme file not found in ', themeFile)
         raise SystemExit('Unable to find theme file..  Please create wav file named theme.wav in the target directory.')
 
-    files = getFileList(directory)
-    convertToAudioFiles(files, directory)
+    themeFileDuration = librosa.get_duration(filename=themeFile)
+    files = getFileList(videoDirectory)
+    
+    outputDirectory = Path(os.path.join(videoDirectory,'themeTuneRemoved'))
+    createDirectory(outputDirectory)
+    
+    with Manager() as manager:
+        managerList = manager.list()
+        processList = []
+    
+        for file in files:
+            process = Process(target=removeThemeTune, args=(file, outputDirectory, themeFile, themeFileDuration))
+            process.start()
+            process.join()
+            process.terminate() 
+            
+        print(managerList)
+    
 
 if __name__ == '__main__':
     main()
