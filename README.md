@@ -7,6 +7,8 @@ the theme tune and convert to .wav file.  Its much more relaxing to listen to.
 
 
 # Installation
+* Download [Anaconda](https://www.anaconda.com/)
+* Run the Anaconda Command Prompt, and inside that the following commands:
 ```
 conda create -n themeTuneRemover python=3.6
 conda activate themeTuneRemover
