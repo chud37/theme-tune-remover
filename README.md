@@ -16,7 +16,7 @@ pip install -r requirements.txt
 ```
 
 # Usage
-* Simply run conda activate from with the anaconda prompt: `conda activate themeThuneRemover` 
+* Simply run conda activate from with the anaconda prompt: `conda activate themeTuneRemover` 
 * Create (or update) the `.env.local` file and write the specified directory inside it. (Don't worry about subdirectories, themeTuneRemover will find all files ending in `.mp4`, `.mov`, `.avi`, `.mkv` and work through the list.)
 * Create a .wav file of the theme tune *only*.  You'll need an audio editor for this, like [Goldwave](https://www.goldwave.com/release.php) or [Audicity](https://www.audacityteam.org/download/) - and place it in the directory that you supplied in the `.env.local` file.  
 * Navigate to the directory where you git cloned this repository, and run `python ttr.py`.  
